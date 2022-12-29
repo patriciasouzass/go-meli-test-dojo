@@ -120,6 +120,49 @@ func TestGetStarshipHandlerInternalServerError(t *testing.T) {
 	}
 }
 
+func TestGetStarshipsHandlerNotFound(t *testing.T) {
+
+	url := "/api/v1/starships/"
+
+	mock := swapi.MockClient{
+		GetStarshipsFunc: func() (models.Starships, error) {
+
+			return models.Starships{}, errors.NewNotFound("Not Found", "Starships not found")
+		},
+	}
+
+	mock.Use()
+	defer mockeable.CleanUpAndAssertControls(t, &mock)
+
+	response := DoRequest(http.MethodGet, url, nil, "")
+	statusCodeExpected := 404
+
+	if response.StatusCode != statusCodeExpected {
+		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
+	}
+}
+
+func TestGetStarshipsHandlerInternalServerError(t *testing.T) {
+
+	url := "/api/v1/starships/"
+
+	mock := swapi.MockClient{
+		GetStarshipsFunc: func() (models.Starships, error) {
+			return models.Starships{}, errors.NewInternal()
+		},
+	}
+
+	mock.Use()
+	defer mockeable.CleanUpAndAssertControls(t, &mock)
+
+	response := DoRequest(http.MethodGet, url, nil, "")
+	statusCodeExpected := 500
+
+	if response.StatusCode != statusCodeExpected {
+		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
+	}
+}
+
 func TestGetPeopleHandlerBadRequest(t *testing.T) {
 
 	url := "/api/v1/people/:id"
@@ -131,17 +174,19 @@ func TestGetPeopleHandlerBadRequest(t *testing.T) {
 	}
 }
 
-func TestGetStarshipsHandlerNotFound(t *testing.T) {
+func TestGetPeopleHandlerNotFound(t *testing.T) {
 
-	url := "/api/v1/starships/"
+	url := "/api/v1/people/9"
 
 	mock := swapi.MockClient{
-		GetStarshipsFunc: func() (models.Starships, error) {
-
-			return models.Starships{}, errors.NewNotFound("Not Found", "Starships not found")
+		GetPeopleFunc: func(id int) (models.People, error) {
+			if id != 9 {
+				t.Errorf("Assertion error. Expected: %d, Got: %d", 9, id)
+			}
+			return models.People{}, errors.NewNotFound("Not Found", "Starship not found")
 		},
 
-		//GetStarshipsFuncControl: mockeable.CallsFuncControl{ExpectedCalls: 1},
+		GetPeopleFuncControl: mockeable.CallsFuncControl{ExpectedCalls: 1},
 	}
 
 	mock.Use()
@@ -149,6 +194,32 @@ func TestGetStarshipsHandlerNotFound(t *testing.T) {
 
 	response := DoRequest(http.MethodGet, url, nil, "")
 	statusCodeExpected := 404
+
+	if response.StatusCode != statusCodeExpected {
+		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
+	}
+}
+
+func TestGetPeopleHandlerInternalServerError(t *testing.T) {
+
+	url := "/api/v1/people/5"
+
+	mock := swapi.MockClient{
+		GetPeopleFunc: func(id int) (models.People, error) {
+			if id != 5 {
+				t.Errorf("Assertion error. Expected: %d, Got: %d", 5, id)
+			}
+			return models.People{}, errors.NewInternal()
+		},
+
+		GetPeopleFuncControl: mockeable.CallsFuncControl{ExpectedCalls: 1},
+	}
+
+	mock.Use()
+	defer mockeable.CleanUpAndAssertControls(t, &mock)
+
+	response := DoRequest(http.MethodGet, url, nil, "")
+	statusCodeExpected := 500
 
 	if response.StatusCode != statusCodeExpected {
 		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
@@ -165,14 +236,14 @@ func TestGetPeopleHandlerSuccess(t *testing.T) {
 				t.Errorf("Assertion error. Expected: %d, Got: %d", 9, id)
 			}
 			return models.People{
-				Name:      "Death Star",
-				BirthYear: "DS-1 Orbital Battle Station",
-				EyeColor:  "Imperial Department of Military Research, Sienar Fleet Systems",
-				Gender:    "1000000000000",
-				HairColor: "120000",
-				Height:    "n/a",
-				Mass:      "342953",
-				SkinColor: "843342",
+				Name:      "Luiza",
+				BirthYear: "01/03/1962",
+				EyeColor:  "Marrom",
+				Gender:    "Feminino",
+				HairColor: "Castanho escuro",
+				Height:    "1,67",
+				Mass:      "57Kg",
+				SkinColor: "Marrom",
 				Homeworld: "1000000000000",
 				Films: []string{
 					"https://swapi.dev/api/films/1/",
@@ -194,7 +265,7 @@ func TestGetPeopleHandlerSuccess(t *testing.T) {
 
 	response := DoRequest(http.MethodGet, url, nil, "")
 	statusCodeExpected := 200
-	expectedBody := `{"name":"Death Star","birth_year":"DS-1 Orbital Battle Station","eye_color":"Imperial Department of Military Research, Sienar Fleet Systems","gender":"1000000000000","hair_color":"120000","height":"n/a","mass":"342953","skin_color":"843342","homeworld":"1000000000000","films":["https://swapi.dev/api/films/1/"],"species":["https://swapi.dev/api/films/1/"],"starships":["https://swapi.dev/api/films/1/"]}`
+	expectedBody := `{"name":"Luiza","birth_year":"01/03/1962","eye_color":"Marrom","gender":"Feminino","hair_color":"Castanho escuro","height":"1,67","mass":"57Kg","skin_color":"Marrom","homeworld":"1000000000000","films":["https://swapi.dev/api/films/1/"],"species":["https://swapi.dev/api/films/1/"],"starships":["https://swapi.dev/api/films/1/"]}`
 
 	if response.StatusCode != statusCodeExpected {
 		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
@@ -207,33 +278,37 @@ func TestGetPeopleHandlerSuccess(t *testing.T) {
 
 //func TestGetPeopleListHandlerSuccess(t *testing.T) {
 //
-//	url := "/api/v1/people/1"
+//	url := "/api/v1/peoplelist/"
 //
 //	mock := swapi.MockClient{
 //		GetPeopleListFunc: func() (models.PeopleList, error) {
-//			return 1,
-//			[]models.PeopleList{
-//				Name:                 "Death Star",
-//				BirthYear:                "DS-1 Orbital Battle Station",
-//				EyeColor:         "Imperial Department of Military Research, Sienar Fleet Systems",
-//				Gender:        "1000000000000",
-//				HairColor:               "120000",
-//				Height: "n/a",
-//				Mass:                 "342953",
-//				SkinColor:           "843342",
-//				Homeworld:        "1000000000000",
-//				Films: []string{
-//					"https://swapi.dev/api/films/1/",
-//				},
-//				Species: []string{
-//					"https://swapi.dev/api/films/1/",
-//				},
-//				Starships: []string{
-//					"https://swapi.dev/api/films/1/",
-//				},
-//		},
 //
-//				GetPeopleListFuncControl: mockeable.CallsFuncControl{ExpectedCalls: },
+//			return models.PeopleList{
+//				Count: 1,
+//				Results: []models.People{
+//					{
+//						Name:      "Luiza",
+//						BirthYear: "01/03/1962",
+//						EyeColor:  "Marrom",
+//						Gender:    "Feminino",
+//						HairColor: "Castanho escuro",
+//						Height:    "1,67",
+//						Mass:      "57Kg",
+//						SkinColor: "Marrom",
+//						Homeworld: "1000000000000",
+//						Films: []string{
+//							"https://swapi.dev/api/films/1/",
+//						},
+//						Species: []string{
+//							"https://swapi.dev/api/films/1/",
+//						},
+//						Starships: []string{
+//							"https://swapi.dev/api/films/1/",
+//						},
+//					},
+//				},
+//			}, nil
+//		},
 //	}
 //
 //	mock.Use()
@@ -241,7 +316,7 @@ func TestGetPeopleHandlerSuccess(t *testing.T) {
 //
 //	response := DoRequest(http.MethodGet, url, nil, "")
 //	statusCodeExpected := 200
-//	expectedBody := `{"name":"Death Star","model":"DS-1 Orbital Battle Station","starship_class":"Deep Space Mobile Battlestation","manufacturer":"Imperial Department of Military Research, Sienar Fleet Systems","cost_in_credits":"1000000000000","length":"120000","crew":"342953","passengers":"843342","max_atmosphering_speed":"n/a","hyperdrive_rating":"4.0","MGLT":"10","cargo_capacity":"1000000000000","consumables":"3 years","films":["https://swapi.dev/api/films/1/"],"pilots":null}`
+//	expectedBody := `{"count":1, "results": [{"name":"Luiza","birth_year":"01/03/1962","eye_color":"Marrom","gender":"Feminino","hair_color":"Castanho escuro","height":"1,67","mass":"57Kg","skin_color":"Marrom","homeworld":"1000000000000","films":["https://swapi.dev/api/films/1/"],"species":["https://swapi.dev/api/films/1/"],"starships":["https://swapi.dev/api/films/1/"]}]}`
 //
 //	if response.StatusCode != statusCodeExpected {
 //		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
