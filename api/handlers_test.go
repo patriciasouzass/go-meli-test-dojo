@@ -94,11 +94,61 @@ func TestGetStarshipHandlerNotFound(t *testing.T) {
 	}
 }
 
+func TestGetStarshipHandlerInternalServerError(t *testing.T) {
+
+	url := "/api/v1/starships/9"
+
+	mock := swapi.MockClient{
+		GetStarshipFunc: func(id int) (models.Starship, error) {
+			if id != 9 {
+				t.Errorf("Assertion error. Expected: %d, Got: %d", 9, id)
+			}
+			return models.Starship{}, errors.NewInternal()
+		},
+
+		GetStarshipFuncControl: mockeable.CallsFuncControl{ExpectedCalls: 1},
+	}
+
+	mock.Use()
+	defer mockeable.CleanUpAndAssertControls(t, &mock)
+
+	response := DoRequest(http.MethodGet, url, nil, "")
+	statusCodeExpected := 500
+
+	if response.StatusCode != statusCodeExpected {
+		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
+	}
+}
+
 func TestGetPeopleHandlerBadRequest(t *testing.T) {
 
 	url := "/api/v1/people/:id"
 	response := DoRequest(http.MethodGet, url, nil, "")
 	statusCodeExpected := 400
+
+	if response.StatusCode != statusCodeExpected {
+		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
+	}
+}
+
+func TestGetStarshipsHandlerNotFound(t *testing.T) {
+
+	url := "/api/v1/starships/"
+
+	mock := swapi.MockClient{
+		GetStarshipsFunc: func() (models.Starships, error) {
+
+			return models.Starships{}, errors.NewNotFound("Not Found", "Starships not found")
+		},
+
+		//GetStarshipsFuncControl: mockeable.CallsFuncControl{ExpectedCalls: 1},
+	}
+
+	mock.Use()
+	defer mockeable.CleanUpAndAssertControls(t, &mock)
+
+	response := DoRequest(http.MethodGet, url, nil, "")
+	statusCodeExpected := 404
 
 	if response.StatusCode != statusCodeExpected {
 		t.Errorf("Assertion error. Expected: %d, Got: %d", statusCodeExpected, response.StatusCode)
